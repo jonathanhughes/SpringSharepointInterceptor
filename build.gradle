@@ -1,0 +1,177 @@
+/*
+ * Plugins
+ *
+ * http://www.gradle.org/docs/current/userguide/plugins.html
+ */
+
+apply plugin: 'java'
+apply plugin: 'project-report'
+
+/*
+ * Load Configuration
+ *
+ * http://codebrickie.com/blog/2011/04/16/building-for-different-environments-with-gradle/
+ * http://www.gradle.org/docs/current/dsl/org.gradle.api.plugins.ExtraPropertiesExtension.html
+ */
+ 
+configurations { providedCompile }
+ 
+loadConfiguration()
+
+def loadConfiguration() {
+
+	// Specify environment with argument -P (eg., gradle build -Ptarget=test )
+	project.ext.target = ( hasProperty( 'target' ) ? target : 'local' )
+	project.ext.testtarget = ( hasProperty( 'testtarget' ) ? testtarget : 'local' )
+
+	println 'target = ' + project.target
+	println 'testtarget = ' + project.testtarget
+	
+	sourceSets.main.compileClasspath += configurations.providedCompile
+	sourceSets.test.compileClasspath += configurations.providedCompile
+	sourceSets.test.runtimeClasspath += configurations.providedCompile
+
+}
+
+/*
+ * Build Script and External Dependencies
+ *
+ * http://www.gradle.org/docs/current/userguide/organizing_build_logic.html#sec:external_dependencies
+ */
+
+buildscript {
+
+	// This task used to add dependencies used for building the project.
+	// This will not be included in the final distribution.
+
+    /*
+	 * Dependencies
+	 *
+	 * http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
+	 * http://www.gradle.org/docs/current/userguide/dependency_management.html
+	 */
+
+	repositories {
+		maven {
+			url "http://webfruit13.fruit.com:9090/archiva/repository/internal/"
+		}
+	}
+
+}
+
+/*
+ * Wrapper Task
+ *
+ * http://www.gradle.org/docs/current/dsl/org.gradle.api.tasks.wrapper.Wrapper.html
+ */
+
+task wrapper( type: Wrapper ) {
+	gradleVersion = '1.10'
+}
+
+/*
+ * Project Properties
+ *
+ * http://www.gradle.org/docs/current/dsl/org.gradle.api.Project.html#N13808
+ */
+
+group = 'com.spring.sharepoint'
+version = '1.0.0'
+
+/*
+ * Java Plugin Configuration
+ *
+ * http://www.gradle.org/docs/current/userguide/java_plugin.html
+ */
+
+sourceCompatibility = '1.7'
+targetCompatibility = '1.7'
+
+sourceSets {
+
+	main {
+		java {
+			srcDir 'src'
+		}
+		resources {
+			srcDir 'src'
+			exclude '**/*.java'
+		}
+	}
+
+	test {
+		java {
+			srcDir 'test/src'
+		}
+		resources {
+		}
+	}
+
+}
+
+test {
+	useTestNG {
+		suites 'test/testng-suite.xml'
+	}
+}
+
+/*
+ * Dependencies
+ *
+ * http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
+ * http://www.gradle.org/docs/current/userguide/dependency_management.html
+ */
+
+repositories {
+	maven {
+		url "http://webfruit13.fruit.com:9090/archiva/repository/internal/"
+	}
+}
+
+dependencies {
+
+	/*
+	 * Versions are based on 
+	 * http://docs.spring.io/platform/docs/1.0.1.RELEASE/reference/htmlsingle/
+	 */
+
+	def springVersion = '4.1.6.RELEASE'
+	
+	/*
+	 * Custom JARs in flatDir lib folder
+	 * See documentation for naming conventions allowed:
+	 * http://www.gradle.org/docs/current/javadoc/org/gradle/api/artifacts/repositories/FlatDirectoryArtifactRepository.html
+	 */
+
+	compile( fileTree( dir: 'lib' ) )
+
+	/*
+	 * Compile Scope
+	 */
+
+	compile( 'org.springframework:spring-beans:' + springVersion )
+	compile( 'org.springframework:spring-context-support:' + springVersion )
+	compile( 'org.springframework:spring-context:' + springVersion )
+	compile( 'org.springframework:spring-core:' + springVersion )
+	compile( 'org.springframework:spring-expression:' + springVersion )
+	compile( 'org.springframework' + ':spring-web:' + springVersion )
+
+	compile( 'com.fasterxml.jackson.core:jackson-databind:2.5.1' )
+	compile( 'commons-beanutils:commons-beanutils:1.9.2' )
+	compile( 'org.apache.commons:commons-io:1.3.2' )
+	compile( 'org.apache.commons:commons-lang3:3.1' )
+	
+	compile( 'log4j:log4j:1.2.17' )
+	compile( 'org.slf4j:slf4j-log4j12:1.7.7' )
+	
+	/*
+	 * Test Scope
+	 * 		Included on classpath for testing
+	 * 		Excluded in build jar/war for deployment
+	 */
+
+	testCompile( 'org.springframework:spring-test:' + springVersion )	
+	testCompile( 'org.testng:testng:6.8.8' )
+
+}
+

@@ -1,0 +1,6 @@
+test-output/
+bin/
+/build/
+.gradle/
+.project
+.settings/

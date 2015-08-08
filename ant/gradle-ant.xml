@@ -1,0 +1,156 @@
+<project name="SharepointConnector [gradle-ant]" basedir="..">
+
+	<!--
+		Inspired by Ray Myers
+		https://gist.github.com/raymyers/735788
+	 -->
+
+	<property environment="env" />
+
+	<property name="target.env" value="local" />
+	<property name="target.testenv" value="local" />
+
+	<condition property="gradle.home.executable" value="${env.GRADLE_HOME}/bin/gradle.bat" else="${env.GRADLE_HOME}/bin/gradle">
+		<os family="windows" />
+	</condition>
+
+	<condition property="gradle.wrapper.executable" value="${basedir}/gradlew.bat" else="${basedir}/gradlew">
+		<os family="windows" />
+	</condition>
+
+	<!--
+		Create Gradle Wrapper (requires gradle already installed on machine)
+
+		When you start a Gradle build via the wrapper, Gradle will be automatically downloaded and used to run the build.
+		This is great for people who don't have gradle pre-installed and for continuous integration environments.
+		http://www.gradle.org/docs/current/userguide/userguide_single.html#gradle_wrapper
+	 -->
+	<target name="build-wrapper" description="Builds the wrapper files, the preffered way to start a gradle build. The wrapper is a batch script on Windows, and a shell script for other operating systems.">
+		<exec executable="${gradle.home.executable}">
+			<arg value="wrapper" />
+		</exec>
+	</target>
+
+	<!--
+		Build Lifecycle Tasks
+
+		List of 'java' gradle plugin tasks that can be run:
+		http://www.gradle.org/docs/current/userguide/userguide_single.html#java_plugin
+	-->
+
+	<target name="1-clean" description="Deletes the build directory.">
+
+		<exec executable="${gradle.wrapper.executable}" failonerror="true">
+			<arg value="clean" />
+			<arg value="-Ptarget=${target.env}" />
+			<arg value="-Ptesttarget=${target.testenv}" />
+			<arg value="--stacktrace" />
+		</exec>
+
+	</target>
+
+	<target name="2-compile" depends="1-clean" description="Compiles the source files">
+
+		<exec executable="${gradle.wrapper.executable}" failonerror="true">
+			<arg value="classes" />
+			<arg value="-Ptarget=${target.env}" />
+			<arg value="-Ptesttarget=${target.testenv}" />
+			<arg value="--stacktrace" />
+		</exec>
+
+	</target>
+
+	<target name="3-test" depends="1-clean" description="Runs all unit tests">
+
+		<exec executable="${gradle.wrapper.executable}" resultproperty="gradle.build.failed">
+			<arg value="test" />
+			<arg value="-Ptarget=${target.env}" />
+			<arg value="-Ptesttarget=${target.testenv}" />
+			<arg value="--stacktrace" />
+		</exec>
+
+		<antcall target="format-junit-reports" />
+
+		<fail message="Gradle build failed, see log for details">
+			<condition>
+				<equals arg1="${gradle.build.failed}" arg2="1"/>
+			</condition>
+		</fail>
+
+	</target>
+
+	<target name="4-dist" depends="1-clean" description="Assembles and tests this project.">
+
+		<exec executable="${gradle.wrapper.executable}" resultproperty="gradle.build.failed">
+			<arg value="build" />
+			<arg value="-Ptarget=${target.env}" />
+			<arg value="-Ptesttarget=${target.testenv}" />
+			<arg value="--stacktrace" />
+		</exec>
+
+		<antcall target="format-junit-reports" />
+
+		<fail message="Gradle build failed, see log for details">
+			<condition>
+				<equals arg1="${gradle.build.failed}" arg2="1"/>
+			</condition>
+		</fail>
+
+	</target>
+
+	<!-- Informational Tasks -->
+
+	<target name="tasks-list" description="Lists all available gradle tasks that can be invoked">
+
+		<exec executable="${gradle.wrapper.executable}">
+			<arg value="task" />
+			<arg value="--all" />
+			<arg value="-Ptarget=${target.env}" />
+		</exec>
+
+	</target>
+
+	<target name="dependencies-list" description="Lists the dependency tree to console">
+
+		<exec executable="${gradle.wrapper.executable}">
+			<arg value="dependencies" />
+			<arg value="-Ptarget=${target.env}" />
+		</exec>
+
+	</target>
+
+	<target name="dependencies-report" description="Creates a text file report of the depdency tree">
+
+		<exec executable="${gradle.wrapper.executable}">
+			<arg value="dependencyReport" />
+			<arg value="-Ptarget=${target.env}" />
+		</exec>
+
+		<echo message="Report written to ${basedir}\build\reports\project\dependencies.txt" />
+
+	</target>
+
+	<!--
+		Format the test results into single Junit report for Bamboo
+		http://ant.apache.org/manual/Tasks/junitreport.html
+	-->
+	<target name="format-junit-reports">
+
+		<property name="test.reports.junit.dir" value="${basedir}/build/reports/junit" />
+		<property name="test.results.junit.dir" value="${basedir}/build/test-results" />
+
+		<!-- Clear any prior junit reports -->
+		<delete dir="${test.reports.junit.dir}" includeemptydirs="yes" failonerror="no"/>
+		<mkdir dir="${test.reports.junit.dir}"/>
+
+		<!-- Consolidate junit results into single report -->
+		<junitreport todir="${test.reports.junit.dir}">
+			<fileset dir="${test.results.junit.dir}">
+				<include name="TEST-*.xml"/>
+			</fileset>
+			<report format="noframes" todir="${test.reports.junit.dir}"/>
+		</junitreport>
+
+	</target>
+
+</project>
